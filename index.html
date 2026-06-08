@@ -379,40 +379,58 @@ function setSyncStatus(state, text) {
 async function loadFromCloud() {
   setSyncStatus('syncing', 'Loading your data...');
   try {
-    const result = await window.storage.get(STORAGE_KEY);
-    if (result && result.value) {
-      const decrypted = xorDecrypt(result.value, SESSION_KEY);
+
+    const encrypted = localStorage.getItem(STORAGE_KEY);
+
+    if (encrypted) {
+      const decrypted = xorDecrypt(encrypted, SESSION_KEY);
+
       if (decrypted) {
         const parsed = JSON.parse(decrypted);
-        expenses    = parsed.expenses    || [];
-        incomes     = parsed.incomes     || [];
+
+        expenses = parsed.expenses || [];
+        incomes = parsed.incomes || [];
         investments = parsed.investments || [];
-        budgets     = parsed.budgets     || defaultBudgets();
-        invPct      = parsed.invPct      || 30;
+        budgets = parsed.budgets || defaultBudgets();
+        invPct = parsed.invPct || 30;
+
         document.getElementById('inv-pct').value = invPct;
         document.getElementById('inv-pct-out').textContent = invPct + '%';
-      } else {
-        setSyncStatus('error', 'Wrong password or corrupted data');
-        return;
       }
     }
-    setSyncStatus('synced', 'Synced — ' + new Date().toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit'}));
+
+    setSyncStatus('synced','Loaded — ' + new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}));
     render();
+
   } catch(e) {
-    setSyncStatus('error', 'Could not load — check connection');
+    console.error(e);
+    setSyncStatus('error','Load failed');
     render();
   }
 }
 
 async function saveToCloud() {
   setSyncStatus('syncing', 'Saving...');
+
   try {
-    const payload = JSON.stringify({ expenses, incomes, investments, budgets, invPct });
+
+    const payload = JSON.stringify({
+      expenses,
+      incomes,
+      investments,
+      budgets,
+      invPct
+    });
+
     const encrypted = xorEncrypt(payload, SESSION_KEY);
-    await window.storage.set(STORAGE_KEY, encrypted);
-    setSyncStatus('synced', 'Saved — ' + new Date().toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit'}));
+
+    localStorage.setItem(STORAGE_KEY, encrypted);
+
+    setSyncStatus('synced','Saved — ' + new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}));
+
   } catch(e) {
-    setSyncStatus('error', 'Save failed — will retry');
+    console.error(e);
+    setSyncStatus('error','Save failed');
   }
 }
 
@@ -529,7 +547,7 @@ function addInvestment(){
 function delEntry(type,id){
   if(type==='e') expenses=expenses.filter(x=>x.id!==id);
   else if(type==='i') incomes=incomes.filter(x=>x.id!==id);
-  else investments=investments.filter(x=>x.id!==id);
+  else if(type==='v') investments=investments.filter(x=>x.id!==id);
   scheduleSave(); render();
 }
 
