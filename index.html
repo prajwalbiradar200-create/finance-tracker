@@ -1,0 +1,678 @@
+cat > /mnt/user-data/outputs/index.html << 'HTMLEOF'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>My Finance Tracker</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f0;color:#1a1a1a;min-height:100vh;}
+
+#lock-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;}
+.lock-card{background:#fff;border:0.5px solid rgba(0,0,0,0.12);border-radius:16px;padding:2.5rem 2rem;width:100%;max-width:340px;text-align:center;}
+.lock-icon{font-size:40px;color:#534AB7;margin-bottom:1rem;}
+.lock-card h1{font-size:18px;font-weight:500;margin-bottom:6px;}
+.lock-card p{font-size:13px;color:#666;margin-bottom:1.5rem;}
+.lock-card input{width:100%;padding:10px 14px;font-size:16px;border:0.5px solid rgba(0,0,0,0.2);border-radius:8px;outline:none;text-align:center;letter-spacing:4px;margin-bottom:10px;}
+.lock-card input:focus{border-color:#534AB7;box-shadow:0 0 0 3px rgba(83,74,183,0.15);}
+.lock-card button.unlock-btn{width:100%;padding:11px;font-size:14px;font-weight:500;background:#534AB7;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-top:2px;}
+.lock-card button.unlock-btn:hover{background:#3C3489;}
+.lock-error{font-size:12px;color:#A32D2D;margin-top:8px;min-height:18px;}
+.lock-hint{font-size:11px;color:#bbb;margin-top:14px;line-height:1.5;}
+.sync-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;background:#E1F5EE;color:#0F6E56;padding:3px 10px;border-radius:99px;margin-bottom:14px;}
+
+#app{display:none;max-width:720px;margin:0 auto;padding:1rem;}
+.top-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px;}
+.top-bar-left{display:flex;align-items:center;gap:8px;}
+.top-bar h1{font-size:15px;font-weight:500;}
+.top-btns{display:flex;gap:6px;}
+.icon-btn{font-size:12px;padding:4px 10px;border-radius:99px;border:0.5px solid rgba(0,0,0,0.2);background:transparent;cursor:pointer;color:#666;display:flex;align-items:center;gap:4px;}
+.icon-btn:hover{background:#f0f0eb;}
+
+.sync-bar{display:flex;align-items:center;gap:6px;font-size:11px;color:#888;margin-bottom:1rem;padding:6px 10px;background:#fff;border-radius:8px;border:0.5px solid rgba(0,0,0,0.08);}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:#ccc;flex-shrink:0;}
+.sync-dot.synced{background:#1D9E75;}.sync-dot.syncing{background:#EF9F27;animation:pulse 1s infinite;}
+.sync-dot.error{background:#E24B4A;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+
+.top-nav{display:flex;align-items:center;gap:8px;margin-bottom:1rem;flex-wrap:wrap;}
+.nav-arrow{width:32px;height:32px;border-radius:8px;border:0.5px solid rgba(0,0,0,0.15);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;color:#1a1a1a;}
+.nav-arrow:hover{background:#f0f0eb;}.nav-arrow:disabled{opacity:0.3;cursor:default;}
+.month-label{font-size:15px;font-weight:500;min-width:130px;text-align:center;}
+.today-btn{font-size:12px;padding:4px 12px;border-radius:99px;border:0.5px solid rgba(0,0,0,0.2);background:transparent;cursor:pointer;color:#666;}
+.today-btn:hover{background:#f0f0eb;}
+.past-badge{font-size:11px;padding:3px 10px;border-radius:99px;background:#FAEEDA;color:#633806;}
+
+.period-bar{display:flex;gap:6px;margin-bottom:1.25rem;flex-wrap:wrap;}
+.pchip{font-size:12px;padding:5px 14px;border-radius:99px;border:0.5px solid rgba(0,0,0,0.15);cursor:pointer;background:transparent;color:#555;}
+.pchip.active{background:#1a1a1a;color:#fff;border-color:#1a1a1a;}
+
+.grid5{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:1.25rem;}
+.metric{background:#eeeee9;border-radius:8px;padding:0.75rem 0.9rem;}
+.metric .mlbl{font-size:11px;color:#666;margin-bottom:3px;}
+.metric .mval{font-size:17px;font-weight:500;color:#1a1a1a;}
+.mval.g{color:#0F6E56;}.mval.r{color:#A32D2D;}.mval.p{color:#534AB7;}
+
+.tabs{display:flex;gap:6px;margin-bottom:1rem;flex-wrap:wrap;}
+.tab{font-size:13px;padding:5px 14px;border-radius:99px;border:0.5px solid rgba(0,0,0,0.15);cursor:pointer;background:transparent;color:#555;}
+.tab.active{background:#eeeee9;color:#1a1a1a;font-weight:500;}
+
+.card{background:#fff;border:0.5px solid rgba(0,0,0,0.09);border-radius:12px;padding:1rem 1.25rem;margin-bottom:1rem;}
+.card h3{font-size:12px;font-weight:500;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.9rem;}
+
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:.75rem;}
+.row input,.row select{flex:1;min-width:90px;font-size:14px;padding:8px 10px;border:0.5px solid rgba(0,0,0,0.18);border-radius:8px;outline:none;background:#fff;color:#1a1a1a;}
+.row input:focus,.row select:focus{border-color:#534AB7;box-shadow:0 0 0 3px rgba(83,74,183,0.12);}
+.btn{height:38px;padding:0 14px;font-size:13px;border-radius:8px;border:0.5px solid rgba(0,0,0,0.18);background:transparent;cursor:pointer;color:#1a1a1a;white-space:nowrap;}
+.btn:hover{background:#f0f0eb;}
+.btn-g{border-color:#1D9E75;color:#0F6E56;}.btn-g:hover{background:#E1F5EE;}
+.btn-p{border-color:#534AB7;color:#3C3489;}.btn-p:hover{background:#EEEDFE;}
+
+.readonly-notice{font-size:12px;color:#666;background:#f5f5f0;border-radius:8px;padding:8px 12px;margin-bottom:12px;display:flex;align-items:center;gap:6px;}
+table{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed;}
+th{text-align:left;color:#999;font-weight:400;padding:5px 0;border-bottom:0.5px solid rgba(0,0,0,0.07);font-size:12px;}
+td{padding:7px 0;border-bottom:0.5px solid rgba(0,0,0,0.05);color:#1a1a1a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+td:last-child{text-align:right;}
+.badge{font-size:11px;padding:2px 7px;border-radius:99px;display:inline-block;}
+.bc-food{background:#FAEEDA;color:#633806;}.bc-transport{background:#E6F1FB;color:#0C447C;}
+.bc-study{background:#EAF3DE;color:#27500A;}.bc-health{background:#FBEAF0;color:#4B1528;}
+.bc-fun{background:#EEEDFE;color:#26215C;}.bc-other{background:#f0f0eb;color:#444;}
+.bc-income{background:#E1F5EE;color:#085041;}.bc-invest{background:#EEEDFE;color:#3C3489;}
+.del{cursor:pointer;color:#ccc;font-size:14px;padding-left:6px;}.del:hover{color:#A32D2D;}
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.bar-lbl{width:75px;color:#666;flex-shrink:0;font-size:12px;}
+.bar-bg{flex:1;height:7px;background:#eeeee9;border-radius:99px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:99px;transition:width .3s;}
+.bar-amt{width:65px;text-align:right;font-weight:500;font-size:12px;}
+.inv-box{background:#EEEDFE;border-radius:12px;padding:1rem 1.25rem;margin-bottom:1rem;}
+.inv-box .ilbl{font-size:12px;color:#534AB7;margin-bottom:4px;}
+.inv-box .ibig{font-size:26px;font-weight:500;color:#3C3489;}
+.inv-box .isub{font-size:12px;color:#534AB7;margin-top:4px;}
+.inv-row{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;}
+.inv-stat{flex:1;min-width:75px;background:rgba(255,255,255,0.55);border-radius:8px;padding:8px 10px;}
+.inv-stat .il{font-size:11px;color:#534AB7;}.inv-stat .iv{font-size:14px;font-weight:500;color:#3C3489;}
+.cf-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:0.5px solid rgba(0,0,0,0.06);font-size:13px;}
+.cf-row:last-child{border-bottom:none;font-weight:500;}
+.empty{text-align:center;color:#ccc;padding:1.5rem 0;font-size:13px;}
+.chart-wrap{position:relative;width:100%;height:190px;margin-top:.5rem;}
+.hist-grid-wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;}
+.hist-card{background:#f5f5f0;border-radius:8px;padding:.75rem 1rem;cursor:pointer;border:0.5px solid transparent;}
+.hist-card:hover{border-color:rgba(0,0,0,0.2);}.hist-card.active{border-color:#1a1a1a;}
+.hist-card .hm{font-size:13px;font-weight:500;}.hist-card .hs{font-size:11px;color:#888;margin-top:2px;}.hist-card .hv{font-size:15px;font-weight:500;margin-top:4px;}
+.invest-tips div{margin-bottom:6px;font-size:13px;line-height:1.6;}
+.loading-overlay{text-align:center;padding:3rem 1rem;color:#888;font-size:14px;}
+.loading-overlay i{font-size:28px;display:block;margin-bottom:8px;color:#ccc;}
+
+@media(max-width:480px){
+  #app{padding:.75rem;}
+  .grid5{grid-template-columns:repeat(2,1fr);}
+  .metric .mval{font-size:15px;}
+  .row input,.row select{font-size:16px;}
+}
+</style>
+</head>
+<body>
+
+<!-- LOCK SCREEN -->
+<div id="lock-screen">
+  <div class="lock-card">
+    <div class="lock-icon"><i class="ti ti-lock"></i></div>
+    <h1>My Finance Tracker</h1>
+    <div class="sync-badge"><i class="ti ti-cloud" style="font-size:12px"></i> Syncs across all your devices</div>
+    <p>Enter your password to continue</p>
+    <input type="password" id="pw-input" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')unlock()"/>
+    <button class="unlock-btn" onclick="unlock()">Unlock</button>
+    <div class="lock-error" id="lock-error"></div>
+    <div class="lock-hint">Your data is encrypted with your password and stored in the cloud. No one else can read it.</div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <div class="top-bar">
+    <div class="top-bar-left">
+      <i class="ti ti-chart-pie" style="font-size:18px;color:#534AB7;" aria-hidden="true"></i>
+      <h1>My Finance Tracker</h1>
+    </div>
+    <div class="top-btns">
+      <button class="icon-btn" onclick="syncNow()" title="Sync now"><i class="ti ti-refresh" aria-hidden="true"></i> Sync</button>
+      <button class="icon-btn" onclick="lockApp()"><i class="ti ti-lock" aria-hidden="true"></i> Lock</button>
+    </div>
+  </div>
+
+  <div class="sync-bar">
+    <div class="sync-dot" id="sync-dot"></div>
+    <span id="sync-text">Syncing...</span>
+  </div>
+
+  <div class="top-nav">
+    <button class="nav-arrow" onclick="shiftMonth(-1)" aria-label="Previous month"><i class="ti ti-chevron-left"></i></button>
+    <span class="month-label" id="month-label">June 2026</span>
+    <button class="nav-arrow" id="next-btn" onclick="shiftMonth(1)" aria-label="Next month"><i class="ti ti-chevron-right"></i></button>
+    <button class="today-btn" onclick="goToday()">Today</button>
+    <span class="past-badge" id="past-badge" style="display:none">Viewing past</span>
+  </div>
+
+  <div class="period-bar">
+    <button class="pchip active" onclick="setPeriod('daily')">Daily</button>
+    <button class="pchip" onclick="setPeriod('weekly')">Weekly</button>
+    <button class="pchip" onclick="setPeriod('monthly')">Monthly</button>
+    <button class="pchip" onclick="setPeriod('yearly')">Yearly</button>
+  </div>
+
+  <div class="grid5" id="metrics"></div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('expense')">Expenses</button>
+    <button class="tab" onclick="switchTab('income')">Income</button>
+    <button class="tab" onclick="switchTab('invest')">Investment</button>
+    <button class="tab" onclick="switchTab('breakdown')">Breakdown</button>
+    <button class="tab" onclick="switchTab('history')">History</button>
+    <button class="tab" onclick="switchTab('budget')">Budget</button>
+  </div>
+
+  <div id="tab-expense">
+    <div id="add-exp-form" class="card">
+      <h3>Add expense</h3>
+      <div class="row">
+        <input type="text" id="e-desc" placeholder="Description"/>
+        <input type="number" id="e-amt" placeholder="₹ Amount" min="0" step="1" inputmode="numeric" style="max-width:130px"/>
+        <select id="e-cat">
+          <option value="food">Food</option><option value="transport">Transport</option>
+          <option value="study">Study</option><option value="health">Health</option>
+          <option value="fun">Fun</option><option value="other">Other</option>
+        </select>
+        <button class="btn" onclick="addExpense()"><i class="ti ti-plus" aria-hidden="true"></i> Add</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Expenses — <span id="view-label">today</span></h3>
+      <div id="past-notice-exp"></div>
+      <div id="expense-list"></div>
+    </div>
+  </div>
+
+  <div id="tab-income" style="display:none">
+    <div id="add-inc-form" class="card">
+      <h3>Log money received</h3>
+      <div class="row">
+        <input type="text" id="i-desc" placeholder="e.g. From Dad"/>
+        <input type="number" id="i-amt" placeholder="₹ Amount" min="0" step="1" inputmode="numeric" style="max-width:130px"/>
+        <select id="i-src">
+          <option value="family">Family</option><option value="scholarship">Scholarship</option>
+          <option value="part-time">Part-time</option><option value="stipend">Stipend</option>
+          <option value="other">Other</option>
+        </select>
+        <button class="btn btn-g" onclick="addIncome()"><i class="ti ti-plus" aria-hidden="true"></i> Add</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Income — <span id="view-label2">today</span></h3>
+      <div id="past-notice-inc"></div>
+      <div id="income-list"></div>
+    </div>
+    <div class="card"><h3>Cash flow</h3><div id="cashflow"></div></div>
+  </div>
+
+  <div id="tab-invest" style="display:none">
+    <div id="inv-box-wrap"></div>
+    <div class="card">
+      <h3>Investment settings</h3>
+      <div class="row" style="align-items:center">
+        <label style="font-size:13px;color:#666;white-space:nowrap">Save % of surplus</label>
+        <input type="range" id="inv-pct" min="10" max="80" value="30" step="5" style="flex:1"/>
+        <span id="inv-pct-out" style="font-size:14px;font-weight:500;min-width:36px">30%</span>
+      </div>
+      <p style="font-size:12px;color:#aaa;margin-top:4px">Surplus = income − essential spending (food, transport, study, health)</p>
+      <div class="card" style="margin-top:1rem;margin-bottom:0;background:#f5f5f0;border:none">
+        <h3>Where to invest as a student</h3>
+        <div class="invest-tips">
+          <div><strong>SIP / Mutual Funds</strong> — Start with ₹500/month via Groww or Zerodha Coin. Index funds are safest.</div>
+          <div><strong>Recurring Deposit (RD)</strong> — Guaranteed 6–7% return. Zero risk, fixed monthly savings.</div>
+          <div><strong>PPF</strong> — Tax-free 7.1% p.a., minimum ₹500/year. Long-term habit builder.</div>
+          <div><strong>Digital Gold</strong> — Buy ₹10 worth on PhonePe/GPay. Very liquid.</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Log investment</h3>
+      <div class="row">
+        <input type="text" id="inv-desc" placeholder="e.g. SIP — Nifty 50"/>
+        <input type="number" id="inv-amt" placeholder="₹ Amount" min="0" step="1" inputmode="numeric" style="max-width:130px"/>
+        <select id="inv-type">
+          <option value="sip">SIP/MF</option><option value="rd">RD</option>
+          <option value="gold">Digital Gold</option><option value="ppf">PPF</option><option value="other">Other</option>
+        </select>
+        <button class="btn btn-p" onclick="addInvestment()"><i class="ti ti-plus" aria-hidden="true"></i> Add</button>
+      </div>
+      <div id="invest-list"></div>
+    </div>
+  </div>
+
+  <div id="tab-breakdown" style="display:none">
+    <div class="card">
+      <h3>Spending by category — <span id="view-label3">today</span></h3>
+      <div id="breakdown-bars"></div>
+    </div>
+    <div class="card">
+      <h3>Daily spending — <span id="trend-label">this month</span></h3>
+      <div class="chart-wrap"><canvas id="trend-chart" role="img" aria-label="Daily spending bar chart"></canvas></div>
+    </div>
+  </div>
+
+  <div id="tab-history" style="display:none">
+    <div class="card">
+      <h3>Monthly history — tap any month to view</h3>
+      <div id="history-grid"></div>
+    </div>
+  </div>
+
+  <div id="tab-budget" style="display:none">
+    <div class="card">
+      <h3>Monthly budget per category</h3>
+      <div id="budget-inputs"></div>
+    </div>
+    <div class="card">
+      <h3>Change password</h3>
+      <div class="row">
+        <input type="password" id="pw-old" placeholder="Current password"/>
+        <input type="password" id="pw-new" placeholder="New password (min 4 chars)"/>
+        <button class="btn" onclick="changePassword()">Update</button>
+      </div>
+      <div id="pw-msg" style="font-size:12px;margin-top:4px;min-height:18px;"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+// =====================================================
+// PASSWORD & ENCRYPTION
+// Simple XOR-based obfuscation so raw data isn't
+// visible in the cloud storage as plain JSON.
+// Change DEFAULT_PW before hosting!
+// =====================================================
+const DEFAULT_PW = 'gada electronics'; // ← CHANGE THIS
+
+function xorEncrypt(str, key) {
+  let out = '';
+  for (let i = 0; i < str.length; i++)
+    out += String.fromCharCode(str.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+  return btoa(unescape(encodeURIComponent(out)));
+}
+function xorDecrypt(b64, key) {
+  try {
+    const str = decodeURIComponent(escape(atob(b64)));
+    let out = '';
+    for (let i = 0; i < str.length; i++)
+      out += String.fromCharCode(str.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+    return out;
+  } catch(e) { return null; }
+}
+
+let SESSION_KEY = '';
+
+function getStoredPw() { return localStorage.getItem('ft_pw') || DEFAULT_PW; }
+
+function unlock() {
+  const val = document.getElementById('pw-input').value;
+  if (val === getStoredPw()) {
+    SESSION_KEY = val;
+    sessionStorage.setItem('ft_unlocked', '1');
+    sessionStorage.setItem('ft_key', val);
+    document.getElementById('lock-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('lock-error').textContent = '';
+    document.getElementById('pw-input').value = '';
+    loadFromCloud();
+  } else {
+    document.getElementById('lock-error').textContent = 'Wrong password. Try again.';
+    document.getElementById('pw-input').value = '';
+  }
+}
+
+function lockApp() {
+  sessionStorage.removeItem('ft_unlocked');
+  sessionStorage.removeItem('ft_key');
+  SESSION_KEY = '';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('lock-screen').style.display = 'flex';
+}
+
+function changePassword() {
+  const old = document.getElementById('pw-old').value;
+  const nw  = document.getElementById('pw-new').value;
+  const msg = document.getElementById('pw-msg');
+  if (old !== getStoredPw()) { msg.style.color='#A32D2D'; msg.textContent='Current password is wrong.'; return; }
+  if (nw.length < 4)         { msg.style.color='#A32D2D'; msg.textContent='New password must be at least 4 characters.'; return; }
+  localStorage.setItem('ft_pw', nw);
+  SESSION_KEY = nw;
+  sessionStorage.setItem('ft_key', nw);
+  saveToCloud();
+  msg.style.color='#0F6E56'; msg.textContent='Password updated. Re-enter on other devices.';
+  document.getElementById('pw-old').value = '';
+  document.getElementById('pw-new').value = '';
+}
+
+if (sessionStorage.getItem('ft_unlocked') === '1') {
+  SESSION_KEY = sessionStorage.getItem('ft_key') || '';
+  document.getElementById('lock-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+}
+
+// =====================================================
+// CLOUD STORAGE via Anthropic persistent storage
+// =====================================================
+const STORAGE_KEY = 'ft_data_v1';
+let syncTimer = null;
+
+function setSyncStatus(state, text) {
+  const dot = document.getElementById('sync-dot');
+  const txt = document.getElementById('sync-text');
+  if (!dot) return;
+  dot.className = 'sync-dot ' + state;
+  txt.textContent = text;
+}
+
+async function loadFromCloud() {
+  setSyncStatus('syncing', 'Loading your data...');
+  try {
+    const result = await window.storage.get(STORAGE_KEY);
+    if (result && result.value) {
+      const decrypted = xorDecrypt(result.value, SESSION_KEY);
+      if (decrypted) {
+        const parsed = JSON.parse(decrypted);
+        expenses    = parsed.expenses    || [];
+        incomes     = parsed.incomes     || [];
+        investments = parsed.investments || [];
+        budgets     = parsed.budgets     || defaultBudgets();
+        invPct      = parsed.invPct      || 30;
+        document.getElementById('inv-pct').value = invPct;
+        document.getElementById('inv-pct-out').textContent = invPct + '%';
+      } else {
+        setSyncStatus('error', 'Wrong password or corrupted data');
+        return;
+      }
+    }
+    setSyncStatus('synced', 'Synced — ' + new Date().toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit'}));
+    render();
+  } catch(e) {
+    setSyncStatus('error', 'Could not load — check connection');
+    render();
+  }
+}
+
+async function saveToCloud() {
+  setSyncStatus('syncing', 'Saving...');
+  try {
+    const payload = JSON.stringify({ expenses, incomes, investments, budgets, invPct });
+    const encrypted = xorEncrypt(payload, SESSION_KEY);
+    await window.storage.set(STORAGE_KEY, encrypted);
+    setSyncStatus('synced', 'Saved — ' + new Date().toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit'}));
+  } catch(e) {
+    setSyncStatus('error', 'Save failed — will retry');
+  }
+}
+
+function scheduleSave() {
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(saveToCloud, 800);
+}
+
+async function syncNow() {
+  await saveToCloud();
+  await loadFromCloud();
+}
+
+// =====================================================
+// DATA
+// =====================================================
+const CATS  = ['food','transport','study','health','fun','other'];
+const CLBL  = {food:'Food',transport:'Transport',study:'Study',health:'Health',fun:'Fun',other:'Other'};
+const SLBL  = {family:'Family',scholarship:'Scholarship','part-time':'Part-time',stipend:'Stipend',other:'Other'};
+const ITLBL = {sip:'SIP/MF',rd:'RD',gold:'Digital Gold',ppf:'PPF',other:'Other'};
+const BARCOL= {food:'#EF9F27',transport:'#378ADD',study:'#639922',health:'#D4537E',fun:'#7F77DD',other:'#888780'};
+const MNAMES= ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function defaultBudgets(){return {food:3000,transport:1000,study:1500,health:500,fun:1000,other:500};}
+
+let expenses    = [];
+let incomes     = [];
+let investments = [];
+let budgets     = defaultBudgets();
+let period      = 'monthly';
+let invPct      = 30;
+let trendChart  = null;
+
+const now       = new Date();
+let viewYear    = now.getFullYear();
+let viewMonth   = now.getMonth();
+
+function isToday(){ return viewYear===now.getFullYear() && viewMonth===now.getMonth(); }
+function isPast(){  return viewYear<now.getFullYear() || (viewYear===now.getFullYear() && viewMonth<now.getMonth()); }
+function todayStr(){ return new Date().toLocaleDateString('en-IN'); }
+
+function parseDate(str){
+  if(!str) return null;
+  const p = str.split('/');
+  if(p.length===3) return new Date(+p[2],+p[1]-1,+p[0]);
+  return new Date(str);
+}
+function isSameDay(a,b){ return a.getDate()===b.getDate()&&a.getMonth()===b.getMonth()&&a.getFullYear()===b.getFullYear(); }
+
+function filterByPeriod(arr){
+  const ref = new Date();
+  return arr.filter(e=>{
+    const d = parseDate(e.date); if(!d) return false;
+    if(period==='daily')   return isSameDay(d,new Date(viewYear,viewMonth,ref.getDate()))&&d.getMonth()===viewMonth&&d.getFullYear()===viewYear;
+    if(period==='weekly'){
+      const s=new Date(viewYear,viewMonth,ref.getDate()); s.setDate(s.getDate()-s.getDay()); s.setHours(0,0,0,0);
+      const e2=new Date(s); e2.setDate(s.getDate()+6); e2.setHours(23,59,59,999);
+      return d>=s&&d<=e2&&d.getMonth()===viewMonth&&d.getFullYear()===viewYear;
+    }
+    if(period==='monthly') return d.getMonth()===viewMonth&&d.getFullYear()===viewYear;
+    if(period==='yearly')  return d.getFullYear()===viewYear;
+    return true;
+  });
+}
+function filterByViewMonth(arr){ return arr.filter(e=>{const d=parseDate(e.date);return d&&d.getMonth()===viewMonth&&d.getFullYear()===viewYear;}); }
+function totByCat(arr){ const t={}; CATS.forEach(c=>t[c]=0); arr.forEach(e=>t[e.cat]=(t[e.cat]||0)+e.amt); return t; }
+function periodLabel(){
+  if(period==='daily')   return 'today';
+  if(period==='weekly')  return 'this week';
+  if(period==='monthly') return MNAMES[viewMonth]+' '+viewYear;
+  return 'year '+viewYear;
+}
+
+function shiftMonth(d){
+  viewMonth+=d;
+  if(viewMonth>11){viewMonth=0;viewYear++;}
+  if(viewMonth<0) {viewMonth=11;viewYear--;}
+  if(viewYear>now.getFullYear()||(viewYear===now.getFullYear()&&viewMonth>now.getMonth())){viewYear=now.getFullYear();viewMonth=now.getMonth();}
+  render();
+}
+function goToday(){ viewYear=now.getFullYear(); viewMonth=now.getMonth(); render(); }
+function jumpToMonth(y,m){ viewYear=y; viewMonth=m; switchTab('expense'); render(); }
+
+function addExpense(){
+  if(isPast()) return;
+  const desc=document.getElementById('e-desc').value.trim();
+  const amt=parseFloat(document.getElementById('e-amt').value);
+  const cat=document.getElementById('e-cat').value;
+  if(!desc||isNaN(amt)||amt<=0) return;
+  expenses.push({id:Date.now(),desc,amt:Math.round(amt),cat,date:todayStr()});
+  document.getElementById('e-desc').value=''; document.getElementById('e-amt').value='';
+  scheduleSave(); render();
+}
+function addIncome(){
+  if(isPast()) return;
+  const desc=document.getElementById('i-desc').value.trim();
+  const amt=parseFloat(document.getElementById('i-amt').value);
+  const src=document.getElementById('i-src').value;
+  if(!desc||isNaN(amt)||amt<=0) return;
+  incomes.push({id:Date.now(),desc,amt:Math.round(amt),src,date:todayStr()});
+  document.getElementById('i-desc').value=''; document.getElementById('i-amt').value='';
+  scheduleSave(); render();
+}
+function addInvestment(){
+  if(isPast()) return;
+  const desc=document.getElementById('inv-desc').value.trim();
+  const amt=parseFloat(document.getElementById('inv-amt').value);
+  const type=document.getElementById('inv-type').value;
+  if(!desc||isNaN(amt)||amt<=0) return;
+  investments.push({id:Date.now(),desc,amt:Math.round(amt),type,date:todayStr()});
+  document.getElementById('inv-desc').value=''; document.getElementById('inv-amt').value='';
+  scheduleSave(); render();
+}
+function delEntry(type,id){
+  if(type==='e') expenses=expenses.filter(x=>x.id!==id);
+  else if(type==='i') incomes=incomes.filter(x=>x.id!==id);
+  else investments=investments.filter(x=>x.id!==id);
+  scheduleSave(); render();
+}
+
+function render(){
+  const past=isPast(), cur=isToday();
+  document.getElementById('month-label').textContent = MNAMES[viewMonth]+' '+viewYear;
+  document.getElementById('past-badge').style.display = past?'':'none';
+  document.getElementById('next-btn').disabled = cur;
+
+  const pastHTML = past?`<div class="readonly-notice"><i class="ti ti-eye" aria-hidden="true"></i> Viewing ${MNAMES[viewMonth]} ${viewYear} — read only.</div>`:'';
+  ['past-notice-exp','past-notice-inc'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=pastHTML;});
+  ['add-exp-form','add-inc-form'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display=past?'none':'';});
+
+  const fExp=filterByPeriod(expenses), fInc=filterByPeriod(incomes), fInv=filterByPeriod(investments);
+  const tots=totByCat(fExp);
+  const totalSpent=Object.values(tots).reduce((a,b)=>a+b,0);
+  const totalInc=fInc.reduce((a,i)=>a+i.amt,0);
+  const totalInv=fInv.reduce((a,i)=>a+i.amt,0);
+  const balance=totalInc-totalSpent-totalInv;
+  const mInc=filterByViewMonth(incomes).reduce((a,i)=>a+i.amt,0);
+  const essSpend=filterByViewMonth(expenses).filter(e=>['food','transport','study','health'].includes(e.cat)).reduce((a,e)=>a+e.amt,0);
+  const surplus=Math.max(0,mInc-essSpend);
+  const suggestInv=Math.round(surplus*(invPct/100));
+
+  const plbl=periodLabel();
+  ['view-label','view-label2','view-label3'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=plbl;});
+  const tl=document.getElementById('trend-label'); if(tl)tl.textContent=MNAMES[viewMonth]+' '+viewYear;
+
+  document.getElementById('metrics').innerHTML=`
+    <div class="metric"><div class="mlbl">Income</div><div class="mval g">₹${totalInc.toLocaleString('en-IN')}</div></div>
+    <div class="metric"><div class="mlbl">Spent</div><div class="mval">₹${totalSpent.toLocaleString('en-IN')}</div></div>
+    <div class="metric"><div class="mlbl">Invested</div><div class="mval p">₹${totalInv.toLocaleString('en-IN')}</div></div>
+    <div class="metric"><div class="mlbl">Balance</div><div class="mval ${balance<0?'r':'g'}">₹${Math.abs(balance).toLocaleString('en-IN')}${balance<0?' short':''}</div></div>
+    <div class="metric"><div class="mlbl">Invest target</div><div class="mval p">₹${suggestInv.toLocaleString('en-IN')}/mo</div></div>
+  `;
+
+  const el=document.getElementById('expense-list');
+  el.innerHTML=!fExp.length?`<div class="empty">No expenses for ${plbl}.</div>`:
+    `<table><thead><tr><th style="width:70px">Date</th><th>Description</th><th style="width:75px">Category</th><th style="width:85px;text-align:right">Amount</th></tr></thead><tbody>`+
+    [...fExp].reverse().map(e=>`<tr><td>${e.date}</td><td>${e.desc}</td><td><span class="badge bc-${e.cat}">${CLBL[e.cat]}</span></td><td>₹${e.amt.toLocaleString('en-IN')}${!past?`<span class="del" onclick="delEntry('e',${e.id})" title="Remove"><i class="ti ti-x"></i></span>`:''}</td></tr>`).join('')+'</tbody></table>';
+
+  const il=document.getElementById('income-list');
+  il.innerHTML=!fInc.length?`<div class="empty">No income for ${plbl}.</div>`:
+    `<table><thead><tr><th style="width:70px">Date</th><th>Description</th><th style="width:75px">Source</th><th style="width:85px;text-align:right">Amount</th></tr></thead><tbody>`+
+    [...fInc].reverse().map(i=>`<tr><td>${i.date}</td><td>${i.desc}</td><td><span class="badge bc-income">${SLBL[i.src]||i.src}</span></td><td style="color:#0F6E56">+₹${i.amt.toLocaleString('en-IN')}${!past?`<span class="del" onclick="delEntry('i',${i.id})" title="Remove"><i class="ti ti-x"></i></span>`:''}</td></tr>`).join('')+'</tbody></table>';
+
+  document.getElementById('cashflow').innerHTML=`
+    <div class="cf-row"><span style="color:#888">Total received</span><span style="color:#0F6E56">+₹${totalInc.toLocaleString('en-IN')}</span></div>
+    <div class="cf-row"><span style="color:#888">Total spent</span><span>−₹${totalSpent.toLocaleString('en-IN')}</span></div>
+    <div class="cf-row"><span style="color:#888">Invested</span><span style="color:#534AB7">−₹${totalInv.toLocaleString('en-IN')}</span></div>
+    <div class="cf-row"><span>Net balance</span><span style="color:${balance<0?'#A32D2D':'#0F6E56'}">₹${balance.toLocaleString('en-IN')}</span></div>
+  `;
+
+  const alreadyInv=filterByViewMonth(investments).reduce((a,i)=>a+i.amt,0);
+  const remaining=Math.max(0,suggestInv-alreadyInv);
+  document.getElementById('inv-box-wrap').innerHTML=`
+    <div class="inv-box">
+      <div class="ilbl">Suggested investment — ${MNAMES[viewMonth]} ${viewYear}</div>
+      <div class="ibig">₹${suggestInv.toLocaleString('en-IN')}</div>
+      <div class="isub">Based on ${invPct}% of ₹${surplus.toLocaleString('en-IN')} surplus</div>
+      <div class="inv-row">
+        <div class="inv-stat"><div class="il">Already invested</div><div class="iv">₹${alreadyInv.toLocaleString('en-IN')}</div></div>
+        <div class="inv-stat"><div class="il">Still to invest</div><div class="iv">₹${remaining.toLocaleString('en-IN')}</div></div>
+        <div class="inv-stat"><div class="il">Monthly surplus</div><div class="iv">₹${surplus.toLocaleString('en-IN')}</div></div>
+      </div>
+    </div>
+  `;
+
+  const invFilt=filterByPeriod(investments);
+  document.getElementById('invest-list').innerHTML=!invFilt.length?`<div class="empty">No investments for ${plbl}.</div>`:
+    `<table><thead><tr><th style="width:70px">Date</th><th>Description</th><th style="width:75px">Type</th><th style="width:85px;text-align:right">Amount</th></tr></thead><tbody>`+
+    [...invFilt].reverse().map(i=>`<tr><td>${i.date}</td><td>${i.desc}</td><td><span class="badge bc-invest">${ITLBL[i.type]||i.type}</span></td><td style="color:#534AB7">₹${i.amt.toLocaleString('en-IN')}${!past?`<span class="del" onclick="delEntry('v',${i.id})" title="Remove"><i class="ti ti-x"></i></span>`:''}</td></tr>`).join('')+'</tbody></table>';
+
+  document.getElementById('budget-inputs').innerHTML=CATS.map(c=>{
+    const pct=Math.min(100,Math.round((tots[c]/(budgets[c]||1))*100));
+    return `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;font-size:13px;"><label style="width:80px;color:#666;flex-shrink:0">${CLBL[c]}</label><input type="number" value="${budgets[c]}" min="0" step="100" style="width:90px;font-size:13px;padding:6px 8px;border:0.5px solid rgba(0,0,0,0.18);border-radius:6px;" onchange="budgets['${c}']=Math.round(+this.value)||0;scheduleSave();render();"/><span style="font-size:12px;color:#aaa">₹${tots[c].toLocaleString('en-IN')} (${pct}%)</span></div>`;
+  }).join('');
+
+  document.getElementById('breakdown-bars').innerHTML=CATS.map(c=>{
+    const pct=Math.min(100,Math.round((tots[c]/(budgets[c]||1))*100));
+    return `<div class="bar-row"><span class="bar-lbl">${CLBL[c]}</span><div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${tots[c]>budgets[c]?'#E24B4A':BARCOL[c]}"></div></div><span class="bar-amt">₹${tots[c].toLocaleString('en-IN')}</span></div>`;
+  }).join('');
+
+  renderTrend();
+  renderHistory();
+}
+
+function renderTrend(){
+  const days=new Date(viewYear,viewMonth+1,0).getDate();
+  const labels=[],data=[];
+  for(let d=1;d<=days;d++){
+    const date=new Date(viewYear,viewMonth,d);
+    if(date>new Date()) break;
+    labels.push(String(d));
+    data.push(expenses.filter(e=>{const ed=parseDate(e.date);return ed&&isSameDay(ed,date);}).reduce((a,e)=>a+e.amt,0));
+  }
+  if(trendChart) trendChart.destroy();
+  trendChart=new Chart(document.getElementById('trend-chart'),{
+    type:'bar',
+    data:{labels,datasets:[{label:'₹ spent',data,backgroundColor:'#B5D4F4',borderColor:'#378ADD',borderWidth:1,borderRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>'₹'+Math.round(ctx.raw).toLocaleString('en-IN')}}},
+      scales:{x:{ticks:{autoSkip:true,maxTicksLimit:15,font:{size:10}},grid:{display:false}},y:{ticks:{callback:v=>'₹'+v.toLocaleString('en-IN'),font:{size:10}},grid:{color:'rgba(0,0,0,0.05)'}}}}
+  });
+}
+
+function renderHistory(){
+  const months=new Set();
+  [...expenses,...incomes,...investments].forEach(e=>{const d=parseDate(e.date);if(d)months.add(d.getFullYear()+'-'+d.getMonth());});
+  months.add(now.getFullYear()+'-'+now.getMonth());
+  const sorted=[...months].sort((a,b)=>b.localeCompare(a));
+  const hg=document.getElementById('history-grid');
+  if(!sorted.length){hg.innerHTML='<div class="empty">No data yet.</div>';return;}
+  hg.innerHTML='<div class="hist-grid-wrap">'+sorted.map(key=>{
+    const [y,m]=key.split('-').map(Number);
+    const sp=expenses.filter(e=>{const d=parseDate(e.date);return d&&d.getMonth()===m&&d.getFullYear()===y;}).reduce((a,e)=>a+e.amt,0);
+    const inc=incomes.filter(e=>{const d=parseDate(e.date);return d&&d.getMonth()===m&&d.getFullYear()===y;}).reduce((a,i)=>a+i.amt,0);
+    const active=y===viewYear&&m===viewMonth;
+    return `<div class="hist-card${active?' active':''}" onclick="jumpToMonth(${y},${m})"><div class="hm">${MNAMES[m].slice(0,3)} ${y}</div><div class="hs">Income: ₹${inc.toLocaleString('en-IN')}</div><div class="hv" style="color:${sp>inc?'#A32D2D':'#0F6E56'}">₹${sp.toLocaleString('en-IN')} spent</div></div>`;
+  }).join('')+'</div>';
+}
+
+function setPeriod(p){
+  period=p;
+  document.querySelectorAll('.pchip').forEach((b,i)=>b.classList.toggle('active',['daily','weekly','monthly','yearly'][i]===p));
+  render();
+}
+function switchTab(t){
+  ['expense','income','invest','breakdown','history','budget'].forEach(x=>document.getElementById('tab-'+x).style.display=x===t?'':'none');
+  document.querySelectorAll('.tab').forEach((b,i)=>b.classList.toggle('active',['expense','income','invest','breakdown','history','budget'][i]===t));
+  if(t==='breakdown') renderTrend();
+  if(t==='history')   renderHistory();
+}
+
+document.getElementById('inv-pct').addEventListener('input',function(){
+  invPct=+this.value;
+  document.getElementById('inv-pct-out').textContent=invPct+'%';
+  scheduleSave(); render();
+});
+
+if(sessionStorage.getItem('ft_unlocked')==='1') loadFromCloud();
+</script>
+</body>
+</html>
+HTMLEOF
+echo "Done — $(wc -c < /mnt/user-data/outputs/index.html) bytes"
